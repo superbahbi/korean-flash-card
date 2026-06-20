@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>고요 — Korean Practice</title>
+<style>
+  :root{
+    --bg:#1B2330;
+    --bg-soft:#232C3D;
+    --paper:#F3EEE3;
+    --paper-edge:#E7E0D1;
+    --ink:#2A2620;
+    --ink-soft:#7A7263;
+    --red:#B5432F;
+    --jade:#4F7568;
+    --gold:#C9A227;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 50% -10%, #2A3447 0%, var(--bg) 55%, #141A24 100%);
+    color:var(--paper);
+    font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    max-width:480px;
+    width:100%;
+    margin:0 auto;
+    padding:env(safe-area-inset-top,0px) 18px env(safe-area-inset-bottom,0px) 18px;
+  }
+  header{padding:22px 0 10px;}
+  .title{
+    font-family:Georgia,"Source Serif 4",serif;
+    font-size:28px;
+    letter-spacing:0.5px;
+    margin:0;
+    color:var(--paper);
+  }
+  .subtitle{
+    margin:2px 0 16px;
+    font-size:13px;
+    color:#9aa3b5;
+    letter-spacing:0.3px;
+  }
+  .stats-row{
+    display:flex;
+    gap:14px;
+    font-size:12.5px;
+    color:#b9c0cf;
+    margin-bottom:14px;
+  }
+  .stats-row b{color:var(--gold); font-weight:600;}
+  .tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .tag-chip{
+    border:1px solid #3a4458;
+    background:transparent;
+    color:#9aa3b5;
+    font-size:12px;
+    letter-spacing:0.3px;
+    padding:6px 12px;
+    border-radius:14px;
+    cursor:pointer;
+    transition:all .2s ease;
+    font-family:inherit;
+  }
+  .tag-chip.active{
+    background:var(--jade);
+    border-color:var(--jade);
+    color:#EAF0EC;
+  }
+  .browse-link{
+    font-size:12px;
+    color:var(--gold);
+    text-decoration:underline;
+    cursor:pointer;
+    margin-bottom:2px;
+    display:inline-block;
+  }
+  main{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px 0;
+    position:relative;
+  }
+  .stage{
+    width:100%;
+    max-width:340px;
+    aspect-ratio:3/4;
+    perspective:1400px;
+  }
+  .card{
+    width:100%;
+    height:100%;
+    position:relative;
+    transform-style:preserve-3d;
+    transition:transform .55s cubic-bezier(.4,.2,.2,1);
+    cursor:pointer;
+  }
+  .card.flipped{ transform:rotateY(180deg); }
+  .face{
+    position:absolute;
+    inset:0;
+    backface-visibility:hidden;
+    border-radius:7px;
+    background:var(--paper);
+    border:1px solid var(--paper-edge);
+    box-shadow:0 18px 40px -12px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.25);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:30px 22px;
+    text-align:center;
+  }
+  .face.back{ transform:rotateY(180deg); }
+  .face .eyebrow{
+    position:absolute;
+    top:16px;
+    left:18px;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .face .word{
+    color:var(--ink);
+    font-size:23px;
+    line-height:1.45;
+    font-weight:600;
+  }
+  .face.back .word{ font-size:18px; font-weight:500; line-height:1.5;}
+  .enso{
+    position:absolute;
+    bottom:14px;
+    right:14px;
+    width:44px;
+    height:44px;
+    opacity:.55;
+  }
+  .enso path{
+    fill:none;
+    stroke:var(--red);
+    stroke-width:5;
+    stroke-linecap:round;
+    stroke-dasharray:230;
+    stroke-dashoffset:230;
+    transition:stroke-dashoffset .9s ease;
+  }
+  .card.flipped .enso path{ stroke-dashoffset:0; }
+  .tap-hint{
+    margin-top:16px;
+    text-align:center;
+    font-size:12px;
+    color:#7c869c;
+    letter-spacing:.3px;
+    min-height:16px;
+  }
+  footer{
+    padding:6px 0 18px;
+    min-height:78px;
+  }
+  .grade-row{
+    display:flex;
+    gap:10px;
+  }
+  .grade-btn{
+    flex:1;
+    border:none;
+    border-radius:9px;
+    padding:15px 0;
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:.3px;
+    color:#fff;
+    font-family:inherit;
+    cursor:pointer;
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .grade-btn:active{ transform:scale(.96); }
+  .grade-btn.again{ background:var(--red); }
+  .grade-btn.good{ background:var(--jade); }
+  .grade-btn.easy{ background:var(--gold); color:#2A2620; }
+  .empty-state, .done-state{
+    text-align:center;
+    padding:0 12px;
+  }
+  .empty-state .glyph, .done-state .glyph{
+    font-family:Georgia,serif;
+    font-size:15px;
+    color:#9aa3b5;
+    margin-bottom:10px;
+    letter-spacing:.3px;
+  }
+  .empty-state .big, .done-state .big{
+    font-family:Georgia,"Source Serif 4",serif;
+    font-size:21px;
+    color:var(--paper);
+    margin-bottom:8px;
+  }
+  .empty-state p, .done-state p{
+    color:#9aa3b5;
+    font-size:13px;
+    line-height:1.6;
+    margin:0;
+  }
+  .more-link{
+    display:inline-block;
+    margin-top:16px;
+    font-size:12.5px;
+    color:var(--gold);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .progress-footer{
+    text-align:center;
+    font-size:11.5px;
+    color:#65708a;
+    padding-bottom:4px;
+  }
+  .kbd-hint{
+    text-align:center;
+    font-size:10.5px;
+    color:#4d5872;
+    padding-bottom:2px;
+  }
+  .link-row{
+    margin-bottom:2px;
+  }
+  .link-row .browse-link{ margin-right:14px; }
+  .reset-link{
+    font-size:12px;
+    color:#9aa3b5;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .reset-link.armed{ color:var(--red); }
+  .save-indicator{
+    text-align:center;
+    font-size:11px;
+    color:var(--red);
+    min-height:14px;
+    padding-bottom:2px;
+  }
+  #browseView{
+    display:none;
+    flex:1;
+    width:100%;
+    overflow-y:auto;
+    padding:4px 0 18px;
+  }
+  .browse-back-link{
+    font-size:12px;
+    color:var(--gold);
+    text-decoration:underline;
+    cursor:pointer;
+    margin-bottom:14px;
+    display:inline-block;
+  }
+  .browse-group-title{
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--jade);
+    margin:18px 0 8px;
+  }
+  .browse-row{
+    border-bottom:1px solid #2c3650;
+    padding:10px 0;
+  }
+  .browse-line{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .browse-front{
+    font-size:14.5px;
+    color:var(--paper);
+    margin-bottom:3px;
+  }
+  .browse-back{
+    font-size:12.5px;
+    color:#9aa3b5;
+  }
+  .copy-btn{
+    border:1px solid #3a4458;
+    background:rgba(255,255,255,.04);
+    color:var(--paper);
+    border-radius:7px;
+    font-size:13px;
+    line-height:1;
+    padding:5px 8px;
+    cursor:pointer;
+    flex-shrink:0;
+    transition:background .15s ease, color .15s ease;
+  }
+  a.copy-btn{ text-decoration:none; display:inline-block; }
+  .copy-btn.small{
+    font-size:12px;
+    padding:4px 7px;
+  }
+  .copy-btn.copied{
+    background:var(--jade);
+    border-color:var(--jade);
+    color:#fff;
+  }
+  .face-actions{
+    position:absolute;
+    bottom:14px;
+    left:14px;
+    display:flex;
+    gap:8px;
+  }
+  .copy-btn.on-face{
+    border:1px solid var(--paper-edge);
+    background:rgba(255,255,255,.5);
+    color:var(--ink);
+  }
+  .copy-btn.on-face.copied{
+    background:var(--jade);
+    color:#fff;
+    border-color:var(--jade);
+  }
+  .copy-btn.on-face.active{
+    background:var(--gold);
+    color:#2A2620;
+    border-color:var(--gold);
+  }
+  .roman-text{
+    margin-top:8px;
+    font-size:13px;
+    color:var(--ink-soft);
+    display:none;
+    letter-spacing:.2px;
+  }
+  .roman-text.visible{ display:block; }
+  .row-actions{
+    display:flex;
+    gap:6px;
+    flex-shrink:0;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 class="title">고요</h1>
+    <div class="subtitle">stillness · daily Korean practice</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="tags" id="tagRow"></div>
+    <div class="link-row">
+      <span class="browse-link" id="browseLink">browse full deck →</span>
+      <span class="reset-link" id="resetLink">reset progress</span>
+    </div>
+  </header>
+
+  <main id="mainArea">
+    <div id="stage" class="stage" style="display:none;">
+      <div class="card" id="card">
+        <div class="face front">
+          <span class="eyebrow" id="frontTag"></span>
+          <div class="word" id="frontWord"></div>
+          <div class="roman-text" id="frontRoman"></div>
+          <div class="face-actions">
+            <button class="copy-btn on-face" id="copyBtn" aria-label="copy Korean text">⧉</button>
+            <a class="copy-btn on-face" id="papagoLink" target="_blank" rel="noopener noreferrer" href="#" aria-label="Open in Papago translator">🌐</a>
+            <button class="copy-btn on-face" id="romanToggle" aria-pressed="false" aria-label="show or hide romanization">Aa</button>
+          </div>
+          <svg class="enso" viewBox="0 0 50 50"><path d="M25,4 A21,21 0 1 1 8,38"/></svg>
+        </div>
+        <div class="face back">
+          <span class="eyebrow">meaning</span>
+          <div class="word" id="backWord"></div>
+        </div>
+      </div>
+    </div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="glyph">— 一 —</div>
+      <div class="big">All caught up</div>
+      <p id="emptyMsg"></p>
+    </div>
+    <div id="doneState" class="done-state" style="display:none;">
+      <div class="glyph">— 一 —</div>
+      <div class="big">오늘은 여기까지</div>
+      <p id="doneMsg"></p>
+      <span class="more-link" id="moreLink">study a few more anyway</span>
+    </div>
+  </main>
+
+  <div id="browseView"></div>
+
+  <div class="tap-hint" id="tapHint"></div>
+
+  <footer>
+    <div class="grade-row" id="gradeRow" style="visibility:hidden;">
+      <button class="grade-btn again" data-grade="again">Again</button>
+      <button class="grade-btn good" data-grade="good">Good</button>
+      <button class="grade-btn easy" data-grade="easy">Easy</button>
+    </div>
+  </footer>
+  <div class="progress-footer" id="progressFooter"></div>
+  <div class="save-indicator" id="saveIndicator"></div>
+  <div class="kbd-hint" id="kbdHint"></div>
+</div>
+
+<script>
+const CARDS_RAW = [
+["안녕하세요 (annyeonghaseyo)","Hello (polite/formal)","survival"],
+["감사합니다 (gamsahamnida)","Thank you (formal)","survival"],
+["죄송합니다 (joesonghamnida)","I'm sorry / Excuse me","survival"],
+["네 / 아니요 (ne / aniyo)","Yes / No","survival"],
+["이거 주세요 (igeo juseyo)","I'll have this / Please give me this","survival"],
+["얼마예요? (eolmayeyo?)","How much is it?","survival"],
+["화장실이 어디예요? (hwajangsiri eodiyeyo?)","Where is the bathroom?","survival"],
+["영어 하세요? (yeongeo haseyo?)","Do you speak English?","survival"],
+["한국어를 잘 못해요 (hangugeoreul jal motaeyo)","I don't speak Korean well","survival"],
+["천천히 말해 주세요 (cheoncheonhi malhae juseyo)","Please speak slowly","survival"],
+["도와주세요 (dowajuseyo)","Please help me","survival"],
+["표 한 장 주세요 (pyo han jang juseyo)","One ticket, please","survival"],
+["길을 잃었어요 (gireul ireosseoyo)","I'm lost","survival"],
+["물 좀 주세요 (mul jom juseyo)","Water, please","survival"],
+["맛있어요 (masisseoyo)","It's delicious","survival"],
+["배고파요 (baegopayo)","I'm hungry","survival"],
+["숙소 (sukso)","accommodation / lodging","survival"],
+["기차역 (gichayeok)","train station","survival"],
+["버스 정류장 (beoseu jeongnyujang)","bus stop","survival"],
+["오늘 / 내일 / 어제 (oneul / naeil / eoje)","today / tomorrow / yesterday","survival"],
+["왼쪽 / 오른쪽 / 직진 (oenjjok / oreunjjok / jikjin)","left / right / straight ahead","survival"],
+["얼마나 걸려요? (eolmana geollyeoyo?)","How long does it take?","survival"],
+["여기서 가까워요? (yeogiseo gakkawoyo?)","Is it close from here?","survival"],
+["괜찮아요 (gwaenchanayo)","It's okay / I'm fine","survival"],
+["잠깐만요 (jamkkanmanyo)","Just a moment","survival"],
+["체크인 / 체크아웃 (chekeu-in / chekeu-aut)","check-in / check-out","survival"],
+["예약했어요 (yeyakhaesseoyo)","I have a reservation","survival"],
+["여권 (yeogwon)","passport","survival"],
+["가방을 잃어버렸어요 (gabangeul ireobeoryeosseoyo)","I lost my bag","survival"],
+["도움이 필요해요 (doumi piryohaeyo)","I need help","survival"],
+["병원이 어디예요? (byeongwoni eodiyeyo?)","Where is the hospital?","survival"],
+["아파요 (apayo)","It hurts / I'm sick","survival"],
+["약국 (yakguk)","pharmacy","survival"],
+["환전 (hwanjeon)","currency exchange","survival"],
+["카드 되나요? (kadeu doenayo?)","Can I pay by card?","survival"],
+["현금만 받아요 (hyeongeumman badayo)","We only accept cash","survival"],
+["짐 (jim)","luggage","survival"],
+["매표소 (maepyoso)","ticket office","survival"],
+["막차가 몇 시예요? (makchaga myeot siyeyo?)","What time is the last train/bus?","survival"],
+["자리 있어요? (jari isseoyo?)","Is this seat available?","survival"],
+["하나 / 둘 / 셋 (hana / dul / set)","one / two / three (native, for counting objects)","numbers"],
+["넷 / 다섯 (net / daseot)","four / five (native)","numbers"],
+["일 / 이 / 삼 (il / i / sam)","one / two / three (Sino-Korean, for numbers/money/time)","numbers"],
+["사 / 오 / 육 (sa / o / yuk)","four / five / six (Sino-Korean)","numbers"],
+["칠 / 팔 / 구 / 십 (chil / pal / gu / sip)","seven / eight / nine / ten (Sino-Korean)","numbers"],
+["몇 시예요? (myeot siyeyo?)","What time is it?","numbers"],
+["시 / 분 (si / bun)","o'clock / minutes","numbers"],
+["원 (won)","won (Korean currency unit)","numbers"],
+["백 / 천 / 만 (baek / cheon / man)","hundred / thousand / ten-thousand","numbers"],
+["몇 명이에요? (myeot myeongieyo?)","How many people?","numbers"],
+["며칠이에요? (myeochirieyo?)","What's the date?","numbers"],
+["한 달 / 일주일 (han dal / iljuil)","one month / one week","numbers"],
+["삼십 분 (samsip bun)","thirty minutes","numbers"],
+["절 (jeol)","Buddhist temple","temple"],
+["스님 (seunim)","Buddhist monk or nun (respectful term)","temple"],
+["큰스님 (keun-seunim)","honorific for a senior/great monk, e.g. an abbot","temple"],
+["법당 (beopdang)","Dharma hall / main worship hall","temple"],
+["선원 (seonwon)","Seon (Zen) meditation center","temple"],
+["참선 (chamseon)","seated Zen meditation","temple"],
+["명상 (myeongsang)","meditation (general term)","temple"],
+["부처님 (bucheonim)","the Buddha (honorific)","temple"],
+["합장 (hapjang)","palms-together gesture of respect/greeting","temple"],
+["절하다 (jeolhada)","to bow / to prostrate","temple"],
+["공양 (gongyang)","offering; also used for a temple meal","temple"],
+["발우 (balu)","a monk's eating bowl","temple"],
+["새벽 예불 (saebyeok yebul)","dawn chanting service","temple"],
+["묵언 (mugeon)","noble silence (a practice common in temple stays)","temple"],
+["수행 (suhaeng)","spiritual practice / cultivation","temple"],
+["마음 (maeum)","mind / heart","temple"],
+["무상 (musang)","impermanence (also the root of 'Musangsa')","temple"],
+["고요 (goyo)","stillness / quietness","temple"],
+["출가 (chulga)","leaving home life to become a monk/nun","temple"],
+["계율 (gyeyul)","monastic precepts / discipline","temple"],
+["화두 (hwadu)","a Zen koan / meditation question","temple"],
+["좌선 (jwaseon)","seated meditation (literal term)","temple"],
+["안거 (angeo)","intensive meditation retreat period","temple"],
+["선방 (seonbang)","meditation hall / room","temple"],
+["좌복 (jwabok)","meditation cushion","temple"],
+["깨달음 (kkaedareum)","awakening / enlightenment","temple"],
+["해탈 (haetal)","liberation from suffering and rebirth","temple"],
+["윤회 (yunhwe)","reincarnation / cycle of rebirth","temple"],
+["자비 (jabi)","compassion","temple"],
+["지혜 (jihye)","wisdom","temple"],
+["인연 (inyeon)","karmic connection / fated relationship","temple"],
+["보살 (bosal)","bodhisattva","temple"],
+["N + 이에요/예요","It is N. (polite copula — 이에요 after consonant, 예요 after vowel)","grammar"],
+["V + 주세요","Please do V for me / Please give me V","grammar"],
+["장소 + 이 어디예요?","Where is [place]?","grammar"],
+["V + 하고 싶어요","I want to do V","grammar"],
+["V + ㄹ/을 수 있어요?","Can you/I do V?","grammar"],
+["V + 았/었어요","past tense ending — V happened/did V","grammar"],
+["V + ㄹ/을 거예요","I will / I'm going to do V (future intention)","grammar"],
+["N + 좀 주세요","Please give me a little N / N, please","grammar"],
+["안 + V / V + 지 않아요","negation — not V","grammar"],
+["N + 이 있어요 / 없어요","there is/isn't N; I have/don't have N","grammar"],
+["V + 아서/어서","because of V, so... (cause/sequence connector)","grammar"],
+["V + 지만","V, but...","grammar"],
+["그리고 / 그래서 / 그런데","and / so / but (connector words)","grammar"],
+["V + 고 있어요","currently doing V (progressive)","grammar"],
+["N + 보다 + Adj","more Adj than N (comparison)","grammar"],
+["V + 지 마세요","Please don't V","grammar"],
+["만나서 반가워요 (mannaseo bangawoyo)","Nice to meet you","daily"],
+["또 만나요 (tto mannayo)","See you again","daily"],
+["잘 지내요? (jal jinaeyo?)","How are you doing?","daily"],
+["잘 지내요 (jal jinaeyo)","I'm doing well","daily"],
+["이름이 뭐예요? (ireumi mwoyeyo?)","What's your name?","daily"],
+["어디에서 왔어요? (eodieseo wasseoyo?)","Where are you from?","daily"],
+["미국에서 왔어요 (migugeseo wasseoyo)","I'm from the US","daily"],
+["여행 중이에요 (yeohaeng jungieyo)","I'm traveling","daily"],
+["혼자 여행해요 (honja yeohaenghaeyo)","I'm traveling alone","daily"],
+["좋아해요 (joahaeyo)","I like it","daily"],
+["재미있어요 (jaemiisseoyo)","It's fun / interesting","daily"],
+["힘들어요 (himdeureoyo)","It's tough / I'm tired","daily"],
+["화이팅! (hwaiting!)","You can do it! / Go for it!","daily"],
+["건배! (geonbae!)","Cheers!","daily"]
+];
+const CARDS = CARDS_RAW.map((c,i)=>({id:String(i), front:c[0], back:c[1], tag:c[2]}));
+
+const TAGS = ["survival","numbers","daily","temple","grammar"];
+const INTERVALS = [1,2,4,7,14,30,60];
+const NEW_CARD_CAP = 10;
+// Bump this number any time you ship a change that should force everyone's
+// saved progress to reset (new card set, changed scoring, etc). Changing it
+// makes window.storage look for a key that doesn't exist yet, so it falls
+// back to defaultState() automatically — no manual wipe needed.
+const DECK_VERSION = 2;
+const STORAGE_KEY = `korean-deck-progress-v${DECK_VERSION}`;
+
+let state = null;
+let queue = [];
+let qIndex = 0;
+let flipped = false;
+let sessionExtra = false;
+let resetArmed = false;
+let resetTimer = null;
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function addDays(dateStr, n){
+  const d = new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+
+function extractKorean(frontStr){
+  const idx = frontStr.indexOf(" (");
+  return idx >= 0 ? frontStr.slice(0, idx).trim() : frontStr.trim();
+}
+
+function extractRoman(frontStr){
+  const m = frontStr.match(/\(([^)]*)\)/);
+  return m ? m[1] : null;
+}
+
+function flashCopied(btnEl){
+  if(!btnEl) return;
+  const original = btnEl.textContent;
+  btnEl.textContent = "✓";
+  btnEl.classList.add("copied");
+  setTimeout(()=>{
+    btnEl.textContent = original;
+    btnEl.classList.remove("copied");
+  }, 1100);
+}
+
+async function copyText(text, btnEl){
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.writeText) throw new Error("no clipboard api");
+    await navigator.clipboard.writeText(text);
+    flashCopied(btnEl);
+  }catch(e){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      flashCopied(btnEl);
+    }catch(e2){
+      console.warn("copy failed", e2);
+    }
+  }
+}
+
+function defaultState(){
+  return {
+    cardStates: {},
+    dailyNew: { date: todayStr(), count: 0 },
+    activeTags: ["survival","numbers","daily"]
+  };
+}
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    state = res && res.value ? JSON.parse(res.value) : defaultState();
+  }catch(e){
+    state = defaultState();
+  }
+  if(state.dailyNew.date !== todayStr()){
+    state.dailyNew = { date: todayStr(), count: 0 };
+  }
+  await saveState();
+}
+
+async function saveState(){
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      setSaveIndicator(true);
+      return true;
+    }catch(e){
+      if(attempt===0){
+        await new Promise(r=>setTimeout(r,400));
+        continue;
+      }
+      console.warn("Storage save failed after retry:", e);
+      setSaveIndicator(false);
+      return false;
+    }
+  }
+}
+
+function setSaveIndicator(ok){
+  const el = document.getElementById("saveIndicator");
+  if(!el) return;
+  el.textContent = ok ? "" : "progress isn't saving right now — your reviews still work, but won't persist";
+}
+
+function buildQueue(){
+  const today = todayStr();
+  const due = [];
+  for(const c of CARDS){
+    const s = state.cardStates[c.id];
+    if(s && s.due <= today) due.push(c);
+  }
+  due.sort((a,b)=>{
+    const da = state.cardStates[a.id], db = state.cardStates[b.id];
+    return da.due === db.due ? da.box - db.box : (da.due < db.due ? -1 : 1);
+  });
+
+  const remainingNew = sessionExtra ? NEW_CARD_CAP : Math.max(0, NEW_CARD_CAP - state.dailyNew.count);
+  const fresh = [];
+  for(const c of CARDS){
+    if(fresh.length >= remainingNew) break;
+    if(!state.cardStates[c.id] && state.activeTags.includes(c.tag)) fresh.push(c);
+  }
+  return due.concat(fresh);
+}
+
+function tagCount(tag){
+  return CARDS.filter(c=>c.tag===tag).length;
+}
+
+function renderTags(){
+  const row = document.getElementById("tagRow");
+  row.innerHTML = "";
+  TAGS.forEach(tag=>{
+    const btn = document.createElement("button");
+    btn.className = "tag-chip" + (state.activeTags.includes(tag) ? " active" : "");
+    btn.textContent = `${tag} (${tagCount(tag)})`;
+    btn.onclick = async ()=>{
+      if(state.activeTags.includes(tag)){
+        state.activeTags = state.activeTags.filter(t=>t!==tag);
+      } else {
+        state.activeTags.push(tag);
+      }
+      await saveState();
+      startSession();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function renderStats(){
+  const today = todayStr();
+  let dueCount = 0;
+  for(const c of CARDS){
+    const s = state.cardStates[c.id];
+    if(s && s.due <= today) dueCount++;
+  }
+  let learned = 0;
+  for(const id in state.cardStates) if(state.cardStates[id].box >= 3) learned++;
+  document.getElementById("statsRow").innerHTML =
+    `<span><b>${dueCount}</b> due</span><span><b>${learned}</b>/${CARDS.length} learned</span>`;
+}
+
+function papagoUrl(text){
+  return `https://papago.naver.com/?sk=ko&tk=en&st=${encodeURIComponent(text)}`;
+}
+
+function showFace(card){
+  document.getElementById("frontTag").textContent = card.tag;
+  document.getElementById("frontWord").textContent = extractKorean(card.front);
+  document.getElementById("backWord").textContent = card.back;
+  document.getElementById("papagoLink").href = papagoUrl(extractKorean(card.front));
+
+  const roman = extractRoman(card.front);
+  const romanEl = document.getElementById("frontRoman");
+  const toggleBtn = document.getElementById("romanToggle");
+  romanEl.classList.remove("visible");
+  toggleBtn.classList.remove("active");
+  toggleBtn.setAttribute("aria-pressed", "false");
+  if(roman){
+    romanEl.textContent = `(${roman})`;
+    toggleBtn.style.display = "";
+  } else {
+    romanEl.textContent = "";
+    toggleBtn.style.display = "none";
+  }
+
+  document.getElementById("card").classList.remove("flipped");
+  flipped = false;
+  document.getElementById("gradeRow").style.visibility = "hidden";
+  document.getElementById("tapHint").textContent = "tap the card (or press space) to reveal";
+}
+
+function showCardView(show){
+  document.getElementById("stage").style.display = show ? "" : "none";
+}
+
+function renderCurrent(){
+  const empty = document.getElementById("emptyState");
+  const done = document.getElementById("doneState");
+  empty.style.display = "none";
+  done.style.display = "none";
+  document.getElementById("tapHint").textContent = "";
+  document.getElementById("gradeRow").style.visibility = "hidden";
+
+  if(qIndex >= queue.length){
+    showCardView(false);
+    const today = todayStr();
+    let nextDue = null;
+    for(const id in state.cardStates){
+      const d = state.cardStates[id].due;
+      if(d > today && (nextDue===null || d < nextDue)) nextDue = d;
+    }
+    if(queue.length === 0 && Object.keys(state.cardStates).length === 0){
+      empty.style.display = "block";
+      document.getElementById("emptyMsg").textContent = "No cards yet in your active tags — toggle a tag above to start.";
+    } else {
+      done.style.display = "block";
+      document.getElementById("doneMsg").textContent =
+        nextDue ? `Next cards come due ${nextDue}. New cards today: ${state.dailyNew.count}/${NEW_CARD_CAP}.`
+                : `You're fully caught up. New cards today: ${state.dailyNew.count}/${NEW_CARD_CAP}.`;
+    }
+    return;
+  }
+  showCardView(true);
+  showFace(queue[qIndex]);
+}
+
+async function grade(rating){
+  const card = queue[qIndex];
+  const existing = state.cardStates[card.id];
+  const wasNew = !existing;
+  let box = existing ? existing.box : -1;
+
+  if(rating === "again") box = 0;
+  else if(rating === "good") box = Math.min(box+1, INTERVALS.length-1);
+  else if(rating === "easy") box = Math.min(box+2, INTERVALS.length-1);
+
+  const due = addDays(todayStr(), INTERVALS[box]);
+  state.cardStates[card.id] = { box, due };
+
+  if(wasNew && !sessionExtra) state.dailyNew.count += 1;
+
+  await saveState();
+  qIndex++;
+  renderStats();
+  renderCurrent();
+}
+
+function flipCard(){
+  if(qIndex >= queue.length) return;
+  if(document.getElementById("browseView").style.display === "block") return;
+  flipped = !flipped;
+  document.getElementById("card").classList.toggle("flipped", flipped);
+  document.getElementById("gradeRow").style.visibility = flipped ? "visible" : "hidden";
+  document.getElementById("tapHint").textContent = flipped ? "" : "tap the card (or press space) to reveal";
+}
+
+function renderBrowse(){
+  const el = document.getElementById("browseView");
+  let html = `<span class="browse-back-link" id="browseBack">← back to practice</span>`;
+  TAGS.forEach(tag=>{
+    html += `<div class="browse-group-title">${tag} (${tagCount(tag)})</div>`;
+    CARDS.filter(c=>c.tag===tag).forEach(c=>{
+      html += `<div class="browse-row">
+        <div class="browse-line">
+          <div class="browse-front">${c.front}</div>
+          <div class="row-actions">
+            <a class="copy-btn small" target="_blank" rel="noopener noreferrer" href="${papagoUrl(extractKorean(c.front))}" aria-label="Open in Papago translator">🌐</a>
+            <button class="copy-btn small browse-copy" data-id="${c.id}" aria-label="copy Korean text">⧉</button>
+          </div>
+        </div>
+        <div class="browse-back">${c.back}</div>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+  document.getElementById("browseBack").addEventListener("click", ()=>{
+    el.style.display = "none";
+    document.getElementById("mainArea").style.display = "flex";
+    document.getElementById("browseLink").style.display = "inline-block";
+  });
+  el.querySelectorAll(".browse-copy").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const card = CARDS.find(c=>c.id === btn.dataset.id);
+      if(card) copyText(extractKorean(card.front), btn);
+    });
+  });
+}
+
+function bindCardInteractions(){
+  document.getElementById("card").addEventListener("click", flipCard);
+
+  document.getElementById("papagoLink").addEventListener("click", (e)=>{
+    e.stopPropagation();
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const card = queue[qIndex];
+    if(card) copyText(extractKorean(card.front), e.currentTarget);
+  });
+
+  document.getElementById("romanToggle").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const romanEl = document.getElementById("frontRoman");
+    const showing = romanEl.classList.toggle("visible");
+    e.currentTarget.classList.toggle("active", showing);
+    e.currentTarget.setAttribute("aria-pressed", showing ? "true" : "false");
+  });
+
+  document.querySelectorAll(".grade-btn").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      grade(btn.dataset.grade);
+    });
+  });
+
+  document.getElementById("moreLink").addEventListener("click", ()=>{
+    sessionExtra = true;
+    startSession();
+  });
+
+  document.getElementById("browseLink").addEventListener("click", ()=>{
+    renderBrowse();
+    document.getElementById("browseView").style.display = "block";
+    document.getElementById("mainArea").style.display = "none";
+    document.getElementById("browseLink").style.display = "none";
+  });
+
+  const resetLink = document.getElementById("resetLink");
+  resetLink.addEventListener("click", async ()=>{
+    if(!resetArmed){
+      resetArmed = true;
+      resetLink.textContent = "tap again to erase all progress";
+      resetLink.classList.add("armed");
+      resetTimer = setTimeout(()=>{
+        resetArmed = false;
+        resetLink.textContent = "reset progress";
+        resetLink.classList.remove("armed");
+      }, 4000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    resetArmed = false;
+    resetLink.classList.remove("armed");
+    resetLink.textContent = "reset progress";
+    try{
+      await window.storage.delete(STORAGE_KEY, false);
+    }catch(e){
+      // key may already be missing — fine either way
+    }
+    state = defaultState();
+    sessionExtra = false;
+    await saveState();
+    startSession();
+  });
+
+  document.addEventListener("keydown", (e)=>{
+    if(document.getElementById("browseView").style.display === "block") return;
+    if(qIndex >= queue.length) return;
+    if(e.code === "Space"){ e.preventDefault(); flipCard(); }
+    else if(flipped && e.key === "1") grade("again");
+    else if(flipped && e.key === "2") grade("good");
+    else if(flipped && e.key === "3") grade("easy");
+  });
+}
+
+function startSession(){
+  queue = buildQueue();
+  qIndex = 0;
+  renderTags();
+  renderStats();
+  renderCurrent();
+  document.getElementById("progressFooter").textContent = `${CARDS.length} cards in deck · stored on this device`;
+  document.getElementById("kbdHint").textContent = "space = flip · 1 again · 2 good · 3 easy";
+}
+
+(async function init(){
+  await loadState();
+  bindCardInteractions();
+  startSession();
+})();
+</script>
+</body>
+</html>
