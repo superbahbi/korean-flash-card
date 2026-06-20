@@ -607,6 +607,62 @@ async function copyText(text, btnEl){
   }
 }
 
+// Storage backend detection: window.storage only exists inside Claude's
+// artifact environment. When this file is opened standalone (AirDrop, email,
+// self-hosted, etc.) it won't exist, so we fall back to the browser's own
+// localStorage, and finally to plain memory if even that's blocked
+// (e.g. some browsers restrict localStorage on file:// pages).
+const hasClaudeStorage = !!(window.storage && typeof window.storage.set === "function");
+let memoryFallback = {};
+let usingMemoryOnly = false;
+
+function localStorageWorks(){
+  try{
+    localStorage.setItem("__test__","1");
+    localStorage.removeItem("__test__");
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function storageGet(key){
+  if(hasClaudeStorage){
+    try{
+      const res = await window.storage.get(key, false);
+      return res ? res.value : null;
+    }catch(e){ return null; }
+  }
+  if(!usingMemoryOnly && localStorageWorks()){
+    try{ return localStorage.getItem(key); }catch(e){ return null; }
+  }
+  usingMemoryOnly = true;
+  return memoryFallback[key] ?? null;
+}
+
+async function storageSet(key, value){
+  if(hasClaudeStorage){
+    try{ await window.storage.set(key, value, false); return true; }
+    catch(e){ return false; }
+  }
+  if(!usingMemoryOnly && localStorageWorks()){
+    try{ localStorage.setItem(key, value); return true; }
+    catch(e){ /* fall through to memory */ }
+  }
+  usingMemoryOnly = true;
+  memoryFallback[key] = value;
+  return false;
+}
+
+async function storageDelete(key){
+  if(hasClaudeStorage){
+    try{ await window.storage.delete(key, false); }catch(e){}
+    return;
+  }
+  try{ localStorage.removeItem(key); }catch(e){}
+  delete memoryFallback[key];
+}
+
 function defaultState(){
   return {
     cardStates: {},
@@ -617,8 +673,8 @@ function defaultState(){
 
 async function loadState(){
   try{
-    const res = await window.storage.get(STORAGE_KEY, false);
-    state = res && res.value ? JSON.parse(res.value) : defaultState();
+    const raw = await storageGet(STORAGE_KEY);
+    state = raw ? JSON.parse(raw) : defaultState();
   }catch(e){
     state = defaultState();
   }
@@ -630,26 +686,22 @@ async function loadState(){
 
 async function saveState(){
   for(let attempt=0; attempt<2; attempt++){
-    try{
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-      setSaveIndicator(true);
-      return true;
-    }catch(e){
-      if(attempt===0){
-        await new Promise(r=>setTimeout(r,400));
-        continue;
-      }
-      console.warn("Storage save failed after retry:", e);
-      setSaveIndicator(false);
-      return false;
-    }
+    const ok = await storageSet(STORAGE_KEY, JSON.stringify(state));
+    if(ok){ setSaveIndicator(true); return true; }
+    if(attempt===0){ await new Promise(r=>setTimeout(r,400)); continue; }
   }
+  if(usingMemoryOnly){
+    setSaveIndicator(false, "progress is only saved for this browser tab — open this file the same way each time, or use it inside Claude, to keep history between visits");
+  } else {
+    setSaveIndicator(false);
+  }
+  return false;
 }
 
-function setSaveIndicator(ok){
+function setSaveIndicator(ok, customMsg){
   const el = document.getElementById("saveIndicator");
   if(!el) return;
-  el.textContent = ok ? "" : "progress isn't saving right now — your reviews still work, but won't persist";
+  el.textContent = ok ? "" : (customMsg || "progress isn't saving right now — your reviews still work, but won't persist");
 }
 
 function buildQueue(){
@@ -895,11 +947,7 @@ function bindCardInteractions(){
     resetArmed = false;
     resetLink.classList.remove("armed");
     resetLink.textContent = "reset progress";
-    try{
-      await window.storage.delete(STORAGE_KEY, false);
-    }catch(e){
-      // key may already be missing — fine either way
-    }
+    await storageDelete(STORAGE_KEY);
     state = defaultState();
     sessionExtra = false;
     await saveState();
