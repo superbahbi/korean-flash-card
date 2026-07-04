@@ -1,5 +1,6 @@
 # Goyo: Scientific Korean Practice — Design & Learning Science
 
+
 ## Part 1: Learning Science Foundation
 
 ### Core Principles: Evidence-Based Language Acquisition
