@@ -22,9 +22,17 @@ export interface UserState {
   cardStates: Record<string, CardState>;
   dailyNew: { date: string; count: number };
   activeTags: string[];
-  sessionStats: {
-    reviewed: number;
-    correct: number;
+  stats: {
+    totalXp: number;
+    level: number;
+    streak: number;
+    lastStudyDate: string;
+    highestStreak: number;
+  };
+  settings: {
+    dailyGoal: number;
+    ttsEnabled: boolean;
+    autoPlayAudio: boolean;
   };
 }
 
@@ -179,11 +187,10 @@ export function getDaysUntilReview(state: CardState, today: string = todayStr())
 /**
  * Get statistics for the user's learning progress
  */
-export function getStatistics(cardStates: Record<string, CardState>) {
+export function getStatistics(cardStates: Record<string, CardState>, totalAvailable: number) {
   let learned = 0; // Box 3+
   let familiar = 0; // Box 1-2
   let learning = 0; // Box 0
-  let new_ = 0; // Not started
 
   let totalReviews = 0;
   let totalCorrect = 0;
@@ -197,20 +204,44 @@ export function getStatistics(cardStates: Record<string, CardState>) {
     totalCorrect += state.timesCorrect;
   }
 
-  const totalCards = Object.keys(cardStates).length;
-  new_ = totalCards - learned - familiar - learning;
+  const startedCards = Object.keys(cardStates).length;
+  const new_ = totalAvailable - startedCards;
 
   return {
     learned,
     familiar,
     learning,
     new: new_,
-    totalCards,
+    totalCards: totalAvailable,
     totalReviews,
     totalCorrect,
     overallAccuracy:
       totalReviews > 0 ? Math.round((totalCorrect / totalReviews) * 100) : 0,
+    progress: Math.round((learned / totalAvailable) * 100),
   };
+}
+
+export function calculateXpGain(rating: "again" | "good" | "easy"): number {
+  switch (rating) {
+    case "easy": return 15;
+    case "good": return 10;
+    case "again": return 5;
+    default: return 0;
+  }
+}
+
+export function calculateLevel(xp: number): number {
+  return Math.floor(Math.sqrt(xp / 100)) + 1;
+}
+
+export function updateStreak(currentStreak: number, lastStudyDate: string): number {
+  const today = todayStr();
+  if (lastStudyDate === today) return currentStreak;
+  
+  const yesterday = addDays(today, -1);
+  if (lastStudyDate === yesterday) return currentStreak + 1;
+  
+  return 1; // Reset or start new streak
 }
 
 /**
